@@ -2,7 +2,13 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, GatewayIntentBits, REST, Routes } = require('discord.js');
+const { 
+    Client, 
+    Collection, 
+    GatewayIntentBits, 
+    REST, 
+    Routes 
+} = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -35,14 +41,17 @@ client.once('ready', async () => {
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
     try {
-        console.log('🔄 Registrando comandos globales...');
+        console.log('🔄 Registrando comandos del servidor...');
 
         await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
+            Routes.applicationGuildCommands(
+                process.env.CLIENT_ID,
+                process.env.GUILD_ID
+            ),
             { body: commands },
         );
 
-        console.log('✅ Comandos registrados correctamente.');
+        console.log('✅ Comandos del servidor registrados correctamente.');
     } catch (error) {
         console.error(error);
     }
@@ -59,10 +68,17 @@ client.on('interactionCreate', async interaction => {
         await command.execute(interaction);
     } catch (error) {
         console.error(error);
+
         if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: '❌ Error ejecutando el comando.', ephemeral: true });
+            await interaction.followUp({
+                content: '❌ Error ejecutando el comando.',
+                ephemeral: true
+            });
         } else {
-            await interaction.reply({ content: '❌ Error ejecutando el comando.', ephemeral: true });
+            await interaction.reply({
+                content: '❌ Error ejecutando el comando.',
+                ephemeral: true
+            });
         }
     }
 });
