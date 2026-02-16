@@ -1,4 +1,8 @@
-const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
+require('dotenv').config();
+
+const fs = require('fs');
+const path = require('path');
+const { Client, Collection, GatewayIntentBits, REST, Routes } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -7,36 +11,58 @@ const client = new Client({
     ]
 });
 
-client.once("clientReady", () => {
-    console.log(`✅ BOT ENCENDIDO COMO: ${client.user.tag}`);
+client.commands = new Collection();
+
+// Cargar comandos
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    client.commands.set(command.data.name, command);
+}
+
+// Cuando el bot está listo
+client.once('ready', async () => {
+    console.log(`✅ Bot listo como ${client.user.tag}`);
+
+    const commands = [];
+    client.commands.forEach(command => {
+        commands.push(command.data.toJSON());
+    });
+
+    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+    try {
+        console.log('🔄 Registrando comandos globales...');
+
+        await rest.put(
+            Routes.applicationCommands(process.env.CLIENT_ID),
+            { body: commands },
+        );
+
+        console.log('✅ Comandos registrados correctamente.');
+    } catch (error) {
+        console.error(error);
+    }
 });
 
-client.on("interactionCreate", async (interaction) => {
+// Escuchar slash commands
+client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === "ban") {
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
 
-        await interaction.deferReply();
-
-        const user = interaction.options.getUser("usuario");
-        const reason = interaction.options.getString("razon") || "Sin razón especificada";
-
-        const member = interaction.guild.members.cache.get(user.id);
-
-        if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-            return interaction.editReply("❌ No tienes permisos para banear.");
-        }
-
-        if (!member) {
-            return interaction.editReply("❌ No encontré a ese usuario en el servidor.");
-        }
-
-        try {
-            await member.ban({ reason: reason });
-            await interaction.editReply(`✅ ${user.tag} fue baneado.\n📌 Razón: ${reason}`);
-        } catch (error) {
-            console.error(error);
-            await interaction.editReply("❌ No pude banear a ese usuario.");
+    try {
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: '❌ Error ejecutando el comando.', ephemeral: true });
+        } else {
+            await interaction.reply({ content: '❌ Error ejecutando el comando.', ephemeral: true });
         }
     }
 });

@@ -3,35 +3,35 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ban')
-        .setDescription('Banea a un usuario')
+        .setDescription('Banea a un usuario del servidor')
         .addUserOption(option =>
-            option.setName('usuario')
+            option
+                .setName('usuario')
                 .setDescription('El usuario a banear')
-                .setRequired(true))
-        .addStringOption(option =>
-            option.setName('razon')
-                .setDescription('Razón del baneo'))
+                .setRequired(true)
+        )
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
     async execute(interaction) {
-
-        await interaction.deferReply();
-
         const user = interaction.options.getUser('usuario');
-        const reason = interaction.options.getString('razon') || "Sin razón";
+        const member = interaction.guild.members.cache.get(user.id);
 
-        if (user.id === interaction.user.id) {
-            return interaction.editReply("❌ No puedes banearte a ti mismo.");
+        if (!member) {
+            return await interaction.reply({
+                content: '❌ No se pudo encontrar al usuario.',
+                ephemeral: true
+            });
         }
 
         try {
-            await interaction.guild.members.ban(user.id, { reason });
-
-            await interaction.editReply(`🔨 ${user.tag} fue baneado.\n📄 Razón: ${reason}`);
-
+            await member.ban();
+            await interaction.reply(`✅ ${user.tag} ha sido baneado.`);
         } catch (error) {
-            console.error("ERROR:", error);
-            await interaction.editReply("❌ No pude banear a ese usuario.");
+            console.error(error);
+            await interaction.reply({
+                content: '❌ No tengo permisos para banear a este usuario.',
+                ephemeral: true
+            });
         }
     }
 };
