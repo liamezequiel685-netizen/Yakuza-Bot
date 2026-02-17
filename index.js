@@ -1,9 +1,9 @@
 require('dotenv').config();
 
-const { 
-    Client, 
-    GatewayIntentBits, 
-    PermissionsBitField 
+const {
+    Client,
+    GatewayIntentBits,
+    PermissionsBitField
 } = require('discord.js');
 
 const client = new Client({
@@ -48,8 +48,8 @@ client.on('messageCreate', async (message) => {
         const member = message.mentions.members.first();
         if (!member) return message.reply("Uso: *promote @usuario NombreDelRol");
 
-        const roleName = args.slice(1).join(" ");
-        const role = message.guild.roles.cache.find(r => r.name === roleName);
+        const roleName = args.slice(0).join(" ");
+        const role = message.guild.roles.cache.find(r => r.name.toLowerCase() === roleName.toLowerCase());
 
         if (!role) return message.reply("❌ Rol no encontrado.");
 
@@ -57,7 +57,7 @@ client.on('messageCreate', async (message) => {
             await member.roles.add(role);
             message.channel.send(`⬆️ ${member.user.tag} ahora es ${role.name}`);
         } catch (err) {
-            message.reply("❌ No puedo asignar ese rol.");
+            message.reply("❌ No puedo asignar ese rol. Verifica la jerarquía de roles.");
         }
     }
 
@@ -121,6 +121,10 @@ client.on('messageCreate', async (message) => {
     // =========================
     if (command === "warn") {
 
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+            return message.reply("❌ No tienes permiso.");
+        }
+
         const member = message.mentions.members.first();
         if (!member) return message.reply("Uso: *warn @usuario");
 
@@ -131,15 +135,19 @@ client.on('messageCreate', async (message) => {
     }
 
     // =========================
-    // AÑADIR HONOR
+    // ADDHONOR
     // =========================
-    if (command === "añadirhonor") {
+    if (command === "addhonor") {
+
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+            return message.reply("❌ No tienes permiso.");
+        }
 
         const member = message.mentions.members.first();
         const cantidad = parseInt(args[1]);
 
         if (!member || isNaN(cantidad)) {
-            return message.reply("Uso: *añadirhonor @usuario cantidad");
+            return message.reply("Uso: *addhonor @usuario cantidad");
         }
 
         if (!data.honor[member.id]) data.honor[member.id] = 0;
@@ -149,19 +157,25 @@ client.on('messageCreate', async (message) => {
     }
 
     // =========================
-    // QUITAR HONOR
+    // REMOVEHONOR
     // =========================
-    if (command === "quitarhonor") {
+    if (command === "removehonor") {
+
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+            return message.reply("❌ No tienes permiso.");
+        }
 
         const member = message.mentions.members.first();
         const cantidad = parseInt(args[1]);
 
         if (!member || isNaN(cantidad)) {
-            return message.reply("Uso: *quitarhonor @usuario cantidad");
+            return message.reply("Uso: *removehonor @usuario cantidad");
         }
 
         if (!data.honor[member.id]) data.honor[member.id] = 0;
+
         data.honor[member.id] -= cantidad;
+        if (data.honor[member.id] < 0) data.honor[member.id] = 0;
 
         message.channel.send(`📉 ${member.user.tag} ahora tiene ${data.honor[member.id]} puntos de honor.`);
     }
@@ -195,6 +209,10 @@ Warns: ${warns}
     // DECLARAR GUERRA
     // =========================
     if (command === "declararguerra") {
+
+        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+            return message.reply("❌ No tienes permiso.");
+        }
 
         const clan = args[0];
         const dia = args[1];
